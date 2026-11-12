@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.mutants/
+
+# Dữ liệu thử do generate*.py sinh ra — tái tạo được, đừng commit.
+spike/legacy_output.txt
+spike/modern_output.txt
+spike/legacy2.txt
+spike/modern2.txt
+
+# KHÔNG BAO GIỜ commit dữ liệu khách hàng. Quy tắc này quan trọng hơn mọi quy tắc
+# khác trong repo: một tệp kết quả batch của ngân hàng lọt vào git là sự cố không
+# sửa được bằng `git rm`.
+customer/
+*.cust.txt
+*.prod.txt

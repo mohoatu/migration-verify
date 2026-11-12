@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "Mô tả định dạng tệp kết quả của job xử lý theo lô, dùng chung cho cả bản cũ",
+    "và bản mới. Đây là thứ khách hàng phải khai báo một lần cho mỗi job.",
+    "",
+    "Câu hỏi của spike này: bao nhiêu phần công việc là ĐƯỜNG ỐNG (đọc, ghép, in)",
+    "và bao nhiêu phần là PHÂN LOẠI khác biệt? Nếu phân loại chiếm phần lớn và mỗi",
+    "khách một kiểu thì đây là tư vấn, không phải sản phẩm."
+  ],
+
+  "format": "fixed",
+  "key": ["account_id"],
+
+  "volatile": {
+    "_comment": "Trường đổi mỗi lần chạy — không bao giờ là sai nghiệp vụ.",
+    "fields": ["run_timestamp", "run_id"]
+  },
+
+  "fields": [
+    { "name": "account_id",    "start": 0,  "len": 10, "type": "string" },
+    { "name": "value_date",    "start": 10, "len": 10, "type": "date" },
+    { "name": "principal",     "start": 20, "len": 14, "type": "decimal", "scale": 2 },
+    { "name": "rate_bp",       "start": 34, "len": 6,  "type": "integer" },
+    { "name": "accrual_days",  "start": 40, "len": 4,  "type": "integer" },
+    { "name": "interest",      "start": 44, "len": 14, "type": "decimal", "scale": 2 },
+    { "name": "total",         "start": 58, "len": 14, "type": "decimal", "scale": 2 },
+    { "name": "status",        "start": 72, "len": 2,  "type": "string" }
+  ]
+}

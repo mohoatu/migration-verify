@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "KỊCH BẢN 2 — cố tình khác hình dạng với kịch bản 1.",
+    "",
+    "Mục đích: kiểm tra xem luật phân loại ở classify.py có phải sửa riêng cho",
+    "từng khách hàng hay không. Nếu phải sửa thì kết luận 'sản phẩm' của kịch",
+    "bản 1 yếu đi, và đây thực chất là tư vấn.",
+    "",
+    "Khác ở bốn điểm:",
+    "  1. Tệp phân tách bằng dấu `|`, không phải bề rộng cố định",
+    "  2. Khoá ghép gồm hai trường, không phải một",
+    "  3. Lỗi nghiệp vụ nằm ở MÃ TRẠNG THÁI (chuỗi), không nằm ở tiền",
+    "  4. Có bản ghi bị mất hẳn ở bản mới"
+  ],
+
+  "format": "delimited",
+  "delimiter": "|",
+  "key": ["claim_id", "line_no"],
+
+  "volatile": {
+    "fields": ["run_timestamp", "batch_seq"]
+  },
+
+  "fields": [
+    { "name": "claim_id",    "type": "string" },
+    { "name": "line_no",     "type": "integer" },
+    { "name": "service_date","type": "date" },
+    { "name": "provider",     "type": "string" },
+    { "name": "billed",       "type": "decimal", "scale": 2 },
+    { "name": "allowed",      "type": "decimal", "scale": 2 },
+    { "name": "copay",        "type": "decimal", "scale": 2 },
+    { "name": "tier",         "type": "integer" },
+    { "name": "adjudication", "type": "string" },
+    { "name": "deny_reason",  "type": "string" }
+  ]
+}
