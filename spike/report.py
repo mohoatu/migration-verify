@@ -26,6 +26,7 @@ TEXT = {
         "order_same": "giống nhau",
         "header": "Dòng tiêu đề : ",
         "changed": "có đổi",
+        "unchecked": "có đổi (chưa kiểm được — khai `trailer_fields` trong lược đồ)",
         "same": "giống nhau",
         "by_kind": "Khác biệt theo loại",
         "blocks": "  ← chặn",
@@ -53,6 +54,7 @@ TEXT = {
         "order_same": "identical",
         "header": "Header line      : ",
         "changed": "changed",
+        "unchecked": "changed (not checked - declare `trailer_fields` in the schema)",
         "same": "identical",
         "by_kind": "Differences by class",
         "blocks": "  <- blocks",
@@ -68,7 +70,8 @@ TEXT = {
 }
 
 
-def render(diffs, n_records, reordered, header_changed, sample=6, lang="vi"):
+def render(diffs, n_records, reordered, header_changed, sample=6, lang="vi",
+           header_checked=True):
     t = TEXT[lang]
     counts = Counter(d["kind"] for d in diffs)
     blocking = [d for d in diffs if d["kind"] in BLOCKING]
@@ -83,7 +86,13 @@ def render(diffs, n_records, reordered, header_changed, sample=6, lang="vi"):
     A("")
     A(t["compared"].format(n=n_records))
     A(t["order"] + (t["order_diff"] if reordered else t["order_same"]))
-    A(t["header"] + (t["changed"] if header_changed else t["same"]))
+    # Phân biệt "có đổi và đã kiểm từng trường" với "có đổi nhưng chưa kiểm".
+    # Gộp hai thứ đó vào một chữ "có đổi" là cách êm ái nhất để một tổng kiểm
+    # soát sai trôi qua mà không ai biết là nó chưa hề được đối chiếu.
+    if not header_changed:
+        A(t["header"] + t["same"])
+    else:
+        A(t["header"] + (t["changed"] if header_checked else t["unchecked"]))
     A("")
     A(t["by_kind"])
     A("-" * 70)
@@ -112,6 +121,13 @@ def render(diffs, n_records, reordered, header_changed, sample=6, lang="vi"):
         A(t["signoff_1"].format(n=counts[ROUNDING]))
         A(t["signoff_2"])
         A(t["signoff_3"])
+        A("")
+        # Nêu tên trường, không chỉ nêu số lượng. Một tổng kiểm soát lệch một
+        # xu nằm lẫn trong "275 trường làm tròn" thì người duyệt không thấy —
+        # mà đó lại đúng là con số kiểm toán đối chiếu đầu tiên.
+        for field, n in Counter(d["field"] for d in diffs
+                                if d["kind"] == ROUNDING).most_common():
+            A(t["field"].format(f=field, n=n))
         A("")
 
     return "\n".join(L)

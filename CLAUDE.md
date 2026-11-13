@@ -171,6 +171,26 @@ trọng hơn cái thứ nhất: nó là thứ duy nhất chứng minh cái thứ
 
 ---
 
+## Đột biến sống sót, đã xét và chấp nhận
+
+`tests/mutate.py` hiện bắt **60/62**. Hai con sống sót là **tương đương về ngữ
+nghĩa** — chúng làm mã chạy khác đi nhưng không làm kết quả khác đi — nên viết
+test để giết chúng chỉ tạo ra test khoá cứng chi tiết nội bộ. Ghi ra đây thay vì
+để trôi:
+
+- **`verify.py:71` — vô hiệu hoá `if a == b: continue`.** Bỏ bước thoát sớm thì
+  hai dòng giống hệt nhau vẫn đi tiếp vào `classify_field`, và hàm đó trả `None`
+  cho mọi trường bằng nhau. Kết quả y hệt, chỉ chậm hơn.
+- **`verify.py:74` — `or` thành `and` trong `if ra is None or rb is None`.**
+  `parse_trailer` trả `None` khi và chỉ khi lược đồ thiếu `trailer_fields`, mà
+  hai bên dùng chung một lược đồ. Không bao giờ có trường hợp đúng một bên là
+  `None`, nên `or` và `and` cho cùng kết quả.
+
+Nếu sau này `parse_trailer` trả `None` vì lý do khác (dòng trailer hỏng chẳng
+hạn), con thứ hai **thôi tương đương** và phải viết test cho nó.
+
+---
+
 ## Bẫy
 
 - Sửa `classify.py` mà quên chạy `mutate.py` là cách êm ái nhất để bộ test mục ruỗng.

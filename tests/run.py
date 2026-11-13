@@ -363,6 +363,98 @@ def test_cli():
     check("Header line      : identical" in same_head, "tiêu đề giống được báo")
 
 
+# ──────────────────────────────────── 5b. dòng tiêu đề và tổng kiểm soát
+
+TRAILER_SCHEMA = {
+    "format": "fixed", "key": ["id"], "volatile_fields": set(),
+    "non_record_prefixes": ["TRAILER"],
+    "fields": [{"name": "id", "type": "string", "start": 0, "len": 4}],
+    "trailer_fields": [
+        {"name": "marker", "type": "string", "start": 0, "len": 10},
+        {"name": "count", "type": "integer", "start": 10, "len": 6},
+        {"name": "total", "type": "decimal", "start": 16, "len": 12, "scale": 2},
+    ],
+}
+
+
+def test_trailer():
+    """Dòng tổng kiểm soát phải được đối chiếu như bản ghi, không phải bỏ qua.
+
+    Số bản ghi và tổng tiền ở dòng trailer là hai con số kiểm toán đối chiếu
+    đầu tiên. Chỉ báo "dòng tiêu đề có đổi" là đẩy việc khó sang người đọc.
+    """
+    sys.path.insert(0, SPIKE)
+    import verify as V
+
+    t1 = "TRAILER   001200 59629808.34"
+    t2 = "TRAILER   001200 59629808.35"   # lệch đúng một xu
+    t3 = "TRAILER   001199 59629808.34"   # thiếu một bản ghi
+
+    # Lệch trong phạm vi một đơn vị -> làm tròn, không chặn, nhưng PHẢI hiện ra
+    # với tên trường để người duyệt nhìn thấy.
+    d = V.compare_non_records([t1], [t2], TRAILER_SCHEMA)
+    eq(len(d), 1, "trailer lệch một xu: ra đúng một khác biệt")
+    eq(d[0]["field"], "total", "nêu đúng tên trường")
+    eq(d[0]["kind"], C.ROUNDING, "lệch một xu ở trailer = làm tròn")
+
+    # Số bản ghi là số nguyên: không có dung sai, phải chặn.
+    d = V.compare_non_records([t1], [t3], TRAILER_SCHEMA)
+    kinds = {x["field"]: x["kind"] for x in d}
+    eq(kinds.get("count"), C.BUSINESS, "số bản ghi lệch = sai nghiệp vụ")
+
+    # Giống hệt thì không có gì.
+    eq(V.compare_non_records([t1], [t1], TRAILER_SCHEMA), [],
+       "trailer giống nhau: không khác biệt")
+
+    # Mất hẳn dòng trailer = tệp cụt. Phải chặn.
+    d = V.compare_non_records([t1], [], TRAILER_SCHEMA)
+    check(any(x["kind"] in C.BLOCKING for x in d), "mất dòng trailer phải chặn")
+
+    # Lược đồ KHÔNG khai trailer_fields: dòng tiêu đề thường chứa dấu thời gian
+    # và đổi mỗi lần chạy. Chặn vì nó thì công cụ thành vô dụng.
+    plain = {k: v for k, v in TRAILER_SCHEMA.items() if k != "trailer_fields"}
+    eq(V.compare_non_records(["RUNSTAMP 1"], ["RUNSTAMP 2"], plain), [],
+       "chưa khai trailer_fields: không chặn vì dòng tiêu đề đổi")
+
+    # ...nhưng báo cáo phải nói rõ là CHƯA KIỂM, không chỉ nói "có đổi".
+    unchecked = REP.render([], 1, False, True, lang="en", header_checked=False)
+    check("not checked" in unchecked, "nói rõ dòng tiêu đề chưa được kiểm")
+    checked = REP.render([], 1, False, True, lang="en", header_checked=True)
+    check("not checked" not in checked, "đã kiểm thì không nói chưa kiểm")
+    # Mặc định phải là "đã kiểm". Mặc định ngược lại sẽ dán nhãn "chưa kiểm"
+    # lên cả những báo cáo đã kiểm tử tế, và cảnh báo nào cũng kêu thì không
+    # còn ai đọc cảnh báo nữa.
+    check("not checked" not in REP.render([], 1, False, True, lang="en"),
+          "mặc định header_checked = True")
+
+    # Khối "cần ký duyệt" phải liệt kê CHỈ các trường làm tròn, không trộn lẫn
+    # trường sai nghiệp vụ vào — người duyệt ký vào danh sách đó.
+    mixed = [{"key": ("A",), "field": "sum_due", "kind": C.ROUNDING,
+              "old": 1, "new": 1, "note": "x"},
+             {"key": ("B",), "field": "instalment", "kind": C.BUSINESS,
+              "old": 1, "new": 2, "note": "y"}]
+    out = REP.render(mixed, 2, False, False, lang="en")
+    signoff = out.split("sign-off")[-1]
+    check("sum_due" in signoff, "khối ký duyệt nêu trường làm tròn")
+    check("instalment" not in signoff,
+          "khối ký duyệt không trộn trường sai nghiệp vụ vào")
+
+    # Đọc dòng trailer thành bản ghi.
+    r = R.parse_trailer(t1, TRAILER_SCHEMA)
+    eq(r["count"], 1200, "đọc đúng số bản ghi")
+    eq(r["total"], Decimal("59629808.34"), "đọc đúng tổng tiền")
+    eq(R.parse_trailer(t1, plain), None, "không khai trailer_fields thì không đọc")
+
+    # Dòng trailer không được lọt vào tập bản ghi.
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        p = os.path.join(tmp, "t.txt")
+        open(p, "w", encoding="utf-8").write("A001\nB002\n" + t1 + "\n")
+        recs, heads = R.parse(p, TRAILER_SCHEMA)
+        eq(len(recs), 2, "trailer không bị tính là bản ghi")
+        eq(len(heads), 1, "trailer được giữ riêng")
+
+
 # ───────────────────────────────────────────────── 6. bộ dựng lược đồ nháp
 
 def test_profiler():
@@ -445,7 +537,8 @@ def test_boundaries():
 
 if __name__ == "__main__":
     for t in (test_classify, test_records, test_report,
-              test_end_to_end, test_cli, test_profiler, test_boundaries):
+              test_end_to_end, test_cli, test_trailer, test_profiler,
+              test_boundaries):
         t()
     print(f"{PASS} đạt, {FAIL} hỏng")
     for m in FAILURES:

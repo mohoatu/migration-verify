@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "Lược đồ tệp kết quả của PREMCALC. Khai một lần, dùng cho cả hai bên.",
+    "",
+    "Khác hai lược đồ trong spike/: tệp này do HAI CHƯƠNG TRÌNH ĐỘC LẬP sinh ra",
+    "(Perl và Java, viết từ cùng một đặc tả), không phải do một script sinh ra",
+    "rồi tự gieo khác biệt. Không ai biết trước chúng lệch ở đâu."
+  ],
+
+  "format": "fixed",
+  "key": ["policy_id"],
+
+  "non_record_prefixes": ["TRAILER"],
+
+  "volatile": {
+    "_comment": "Job này không in dấu thời gian — không có trường nào đổi theo lần chạy.",
+    "fields": []
+  },
+
+  "_trailer_comment": [
+    "Dòng tổng kiểm soát được đối chiếu theo từng trường như bản ghi thường.",
+    "Số bản ghi và tổng tiền là hai con số kiểm toán nhìn trước tiên — lệch là",
+    "phải chặn, không phải ghi chú một dòng rồi cho qua."
+  ],
+  "trailer_fields": [
+    { "name": "marker",    "start": 0,  "len": 10, "type": "string" },
+    { "name": "rec_count", "start": 10, "len": 6,  "type": "integer" },
+    { "name": "sum_due",   "start": 16, "len": 12, "type": "decimal", "scale": 2 }
+  ],
+
+  "fields": [
+    { "name": "policy_id",    "start": 0,  "len": 10, "type": "string" },
+    { "name": "accrual_days", "start": 10, "len": 4,  "type": "integer" },
+    { "name": "instalment",   "start": 14, "len": 10, "type": "decimal", "scale": 2 },
+    { "name": "interest",     "start": 24, "len": 10, "type": "decimal", "scale": 2 },
+    { "name": "total_due",    "start": 34, "len": 10, "type": "decimal", "scale": 2 },
+    { "name": "status",       "start": 44, "len": 2,  "type": "string" }
+  ]
+}

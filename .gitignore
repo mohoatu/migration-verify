@@ -17,3 +17,5 @@ spike/modern2.txt
 customer/
 *.cust.txt
 *.prod.txt
+build/  
+*.log  

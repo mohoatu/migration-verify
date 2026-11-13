@@ -19,6 +19,12 @@ def load_schema(path):
     with open(path, encoding="utf-8") as f:
         s = json.load(f)
     s["volatile_fields"] = set(s.get("volatile", {}).get("fields", []))
+    # Dòng không phải bản ghi: tiêu đề đầu tệp, dòng tổng kiểm soát cuối tệp.
+    # Trước đây "RUNSTAMP" bị viết cứng trong mã; nó phải nằm ở lược đồ, vì mỗi
+    # job đặt tên một kiểu và dòng TRAILER thì gần như job batch nào cũng có.
+    # Một dòng trailer lọt vào tập bản ghi sẽ thành "bản ghi mất" giả ở mọi lần
+    # chạy, và tệ hơn là nó che mất một bản ghi mất thật.
+    s["non_record_prefixes"] = tuple(s.get("non_record_prefixes", ["RUNSTAMP"]))
     return s
 
 
@@ -67,8 +73,10 @@ def parse(path, schema):
             line = line.rstrip("\n")
             if not line.strip():
                 continue
-            # Dòng tiêu đề: không phải bản ghi. Giữ lại để so sánh riêng.
-            if line.startswith("RUNSTAMP"):
+            # Dòng tiêu đề hoặc tổng kiểm soát: không phải bản ghi. Giữ lại để
+            # so sánh riêng — chúng vẫn phải khớp, chỉ là không ghép theo khoá.
+            if line.startswith(tuple(schema.get("non_record_prefixes",
+                                                ("RUNSTAMP",)))):
                 headers.append(line)
                 continue
             rec = {}
@@ -76,6 +84,23 @@ def parse(path, schema):
                 rec[fld["name"]] = _coerce(raw, fld)
             records.append(rec)
     return records, headers
+
+
+def parse_trailer(line, schema):
+    """Đọc dòng tổng kiểm soát thành bản ghi, nếu lược đồ có khai `trailer_fields`.
+
+    Dòng trailer đáng được đối chiếu **theo từng trường** chứ không phải so chuỗi:
+    nó chứa số bản ghi và tổng tiền — đúng hai con số kiểm toán đối chiếu đầu
+    tiên. Báo "dòng tiêu đề có đổi" rồi thôi là đẩy việc khó sang người đọc, và
+    người đọc sẽ bỏ qua.
+    """
+    flds = schema.get("trailer_fields")
+    if not flds:
+        return None
+    split = _split_fixed if schema.get("format", "fixed") == "fixed" else _split_delimited
+    fake = {"fields": flds, "delimiter": schema.get("delimiter", "|")}
+    return {f["name"]: _coerce(raw, f)
+            for f, raw in zip(flds, split(line, fake))}
 
 
 def key_of(rec, schema):

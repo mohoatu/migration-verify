@@ -8,8 +8,8 @@ Chạy:  python3 verify.py <tệp cũ> <tệp mới> <lược đồ.json> [--lan
 """
 
 import sys
-from records import load_schema, parse, align
-from classify import classify_pair, MISSING, EXTRA, BLOCKING
+from records import load_schema, parse, align, parse_trailer
+from classify import classify_pair, classify_field, BUSINESS, MISSING, EXTRA, BLOCKING
 from report import render, TEXT
 
 # Windows mặc định ghi console bằng cp1252, và báo cáo có cả tiếng Việt lẫn ký tự
@@ -49,9 +49,49 @@ def main(argv):
         diffs.append({"key": k, "field": label, "kind": EXTRA,
                       "old": "absent", "new": "present", "note": "only in the new system"})
 
-    print(render(diffs, len(pairs), reordered, old_head != new_head, lang=lang))
+    diffs.extend(compare_non_records(old_head, new_head, schema))
+
+    print(render(diffs, len(pairs), reordered, old_head != new_head, lang=lang,
+                 header_checked=bool(schema.get("trailer_fields"))))
 
     return 1 if any(d["kind"] in BLOCKING for d in diffs) else 0
+
+
+def compare_non_records(old_lines, new_lines, schema):
+    """Đối chiếu dòng tiêu đề và dòng tổng kiểm soát.
+
+    Chúng không ghép theo khoá được, nhưng **vẫn phải khớp**. Đặc biệt là dòng
+    trailer: số bản ghi và tổng tiền ở đó là hai con số kiểm toán nhìn trước
+    tiên, nên lệch là phải chặn, không phải ghi chú một dòng rồi cho qua.
+    """
+    out = []
+    key = ("(trailer)",)
+
+    for i, (a, b) in enumerate(zip(old_lines, new_lines)):
+        if a == b:
+            continue
+        ra, rb = parse_trailer(a, schema), parse_trailer(b, schema)
+        if ra is None or rb is None:
+            # Lược đồ chưa khai `trailer_fields`, nên không biết dòng này gồm
+            # những trường nào. KHÔNG chặn ở đây: dòng tiêu đề thường chứa dấu
+            # thời gian và đổi mỗi lần chạy, chặn vì nó thì công cụ hoá vô dụng.
+            # Báo cáo nói rõ là có đổi và chưa kiểm được — xem `report.py`.
+            continue
+        for fld in schema["trailer_fields"]:
+            nm = fld["name"]
+            verdict = classify_field(nm, ra[nm], rb[nm], fld, schema)
+            if verdict:
+                kind, note = verdict
+                out.append({"key": key, "field": nm, "kind": kind,
+                            "old": ra[nm], "new": rb[nm], "note": note})
+
+    # Số dòng không phải bản ghi khác nhau: một bên thiếu hẳn tiêu đề hoặc
+    # trailer. Im lặng ở đây nghĩa là một tệp cụt vẫn báo ĐẠT.
+    if len(old_lines) != len(new_lines):
+        out.append({"key": key, "field": "(số dòng không phải bản ghi)",
+                    "kind": BUSINESS, "old": len(old_lines), "new": len(new_lines),
+                    "note": "thiếu hoặc thừa dòng tiêu đề / tổng kiểm soát"})
+    return out
 
 
 if __name__ == "__main__":
