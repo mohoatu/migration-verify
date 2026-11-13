@@ -9,6 +9,7 @@ Chạy:  python3 make_gallery.py        # ghi ra gallery/*.png
 
 import os
 import subprocess
+import sys
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1280, 720
@@ -128,9 +129,11 @@ def report_shot():
     d.rectangle([32, 106, W - 32, H - 30], fill=(12, 15, 20))
 
     txt = subprocess.run(
-        ["python3", "verify.py", "legacy_output.txt", "modern_output.txt",
+        [sys.executable, "verify.py", "legacy_output.txt", "modern_output.txt",
          "schema.json", "--lang=en"],
-        capture_output=True, text=True).stdout.splitlines()
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        env=dict(os.environ, PYTHONIOENCODING="utf-8"),
+        ).stdout.splitlines()
 
     y = 124
     for l in [x for x in txt if x.strip() or True][:34]:

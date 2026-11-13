@@ -12,6 +12,16 @@ from records import load_schema, parse, align
 from classify import classify_pair, MISSING, EXTRA, BLOCKING
 from report import render, TEXT
 
+# Windows mặc định ghi console bằng cp1252, và báo cáo có cả tiếng Việt lẫn ký tự
+# kẻ khung — gặp nhau là `UnicodeEncodeError` và công cụ chết giữa chừng. Khách
+# của công cụ này gần như chắc chắn chạy Windows, nên đây không phải chuyện nhỏ:
+# một công cụ vỡ khi in kết quả thì không có kết quả nào cả.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]

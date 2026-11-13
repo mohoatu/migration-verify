@@ -1,0 +1,8 @@
+# LF ở mọi nơi. Máy làm việc là Windows nhưng công cụ này sẽ chạy trên máy chủ
+# của khách, và một `.sh` có CRLF thì shell báo `bad interpreter` — lỗi khó đoán
+# nhất trong những lỗi vặt.
+* text=auto eol=lf
+
+*.png binary
+*.xlsx binary
+*.pdf binary

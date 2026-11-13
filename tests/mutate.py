@@ -29,6 +29,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPIKE = os.path.join(ROOT, "spike")
 RUNNER = os.path.join(ROOT, "tests", "run.py")
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Chỉ đột biến mã sản phẩm. `generate*.py` là dữ liệu thử, `make_gallery.py` là
 # tài sản bán hàng — phá chúng không nói lên điều gì về chất lượng bộ test.
 TARGETS = ["classify.py", "records.py", "report.py", "verify.py"]
@@ -132,9 +138,13 @@ def apply_mutation(src, index):
 # ─────────────────────────────────────────────────────────────── chạy thử
 
 def tests_pass(spike_dir):
-    env = dict(os.environ, SPIKE_DIR=spike_dir, PYTHONDONTWRITEBYTECODE="1")
+    # UTF-8 ép cứng: locale Windows là cp1252 và bộ test in tiếng Việt. Thiếu
+    # dòng này thì mọi đột biến đều "bị bắt" vì lỗi mã hoá, và tỷ lệ 100% là giả.
+    env = dict(os.environ, SPIKE_DIR=spike_dir, PYTHONDONTWRITEBYTECODE="1",
+               PYTHONIOENCODING="utf-8")
     p = subprocess.run([sys.executable, RUNNER], cwd=ROOT, env=env,
-                       capture_output=True, text=True, timeout=180)
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=180)
     return p.returncode == 0
 
 
@@ -168,9 +178,14 @@ def main():
 
             for i, (desc, line) in enumerate(sites):
                 sandbox = os.path.join(work, f"{fname}-{i}")
+                # Chỉ chép mã và lược đồ. Tệp dữ liệu `.txt` do `generate*.py`
+                # sinh lại trong chính sandbox, nên chép chúng 48 lần là chép
+                # thừa vài chục MB — trên Windows đó là khác biệt giữa một phút
+                # và mười phút, và một công cụ chạy mười phút thì không ai chạy.
                 shutil.copytree(SPIKE, sandbox,
-                                ignore=shutil.ignore_patterns("__pycache__",
-                                                              "gallery"))
+                                ignore=shutil.ignore_patterns(
+                                    "__pycache__", "gallery", "*.txt", "*.md",
+                                    "*.png"))
                 try:
                     mutated = apply_mutation(src, i)
                 except Exception:

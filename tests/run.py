@@ -26,6 +26,25 @@ import report as REP          # noqa: E402
 PASS = FAIL = 0
 FAILURES = []
 
+# Chạy tiến trình con bằng UTF-8, không theo locale của máy. Trên Windows locale
+# là cp1252, và mọi chuỗi tiếng Việt trong báo cáo sẽ làm vỡ cả hai đầu: con
+# không ghi ra được, cha không đọc vào được. Bộ test phải chạy giống nhau trên
+# máy của mình và máy của khách.
+CHILD_ENV = dict(os.environ, PYTHONIOENCODING="utf-8")
+
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+def run_py(args, cwd=None, check=False):
+    import subprocess
+    return subprocess.run([sys.executable, *args], cwd=cwd or SPIKE,
+                          env=CHILD_ENV, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", check=check)
+
 
 def check(cond, label):
     global PASS, FAIL
@@ -265,10 +284,8 @@ def test_report():
 # ──────────────────────────────────────────── 4. chạy thật cả hai kịch bản
 
 def run_scenario(gen, old, new, schema):
-    import subprocess
-    subprocess.run([sys.executable, gen], cwd=SPIKE, capture_output=True, check=True)
-    p = subprocess.run([sys.executable, "verify.py", old, new, schema, "--lang=en"],
-                       cwd=SPIKE, capture_output=True, text=True)
+    run_py([gen], check=True)
+    p = run_py(["verify.py", old, new, schema, "--lang=en"])
     return p.returncode, p.stdout
 
 
@@ -296,10 +313,8 @@ def test_end_to_end():
           "đổi hoa/thường không bị báo là sai nghiệp vụ")
 
     # Một tệp so với chính nó thì phải ĐẠT và trả mã thoát 0.
-    import subprocess
-    p = subprocess.run([sys.executable, "verify.py", "legacy2.txt",
-                        "legacy2.txt", "schema2.json", "--lang=en"],
-                       cwd=SPIKE, capture_output=True, text=True)
+    p = run_py(["verify.py", "legacy2.txt", "legacy2.txt",
+                "schema2.json", "--lang=en"])
     eq(p.returncode, 0, "tệp so với chính nó: mã thoát 0")
     check("SHIP" in p.stdout and "DO NOT" not in p.stdout,
           "tệp so với chính nó: ĐẠT")
@@ -309,17 +324,13 @@ def test_end_to_end():
 
 def cli(*argv):
     """Chạy verify.py và trả về (mã thoát, đầu ra)."""
-    import subprocess
-    p = subprocess.run([sys.executable, "verify.py", *argv],
-                       cwd=SPIKE, capture_output=True, text=True)
+    p = run_py(["verify.py", *argv])
     return p.returncode, p.stdout
 
 
 def test_cli():
     """Mã thoát là hợp đồng với CI của khách. Sai mã thoát = cổng chặn không chặn."""
-    import subprocess
-    subprocess.run([sys.executable, "generate2.py"], cwd=SPIKE,
-                   capture_output=True, check=True)
+    run_py(["generate2.py"], check=True)
 
     # Thiếu hoặc thừa tham số: mã thoát 2 (lỗi dùng sai), KHÔNG phải 0 hay 1.
     # Nhầm sang 0 là thảm hoạ: pipeline xanh vì công cụ còn chưa chạy.
@@ -362,9 +373,7 @@ def test_profiler():
     phía sau đều sai theo, và người dùng sẽ không bao giờ biết.
     """
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
-    import subprocess
-    subprocess.run([sys.executable, "generate2.py"], cwd=SPIKE,
-                   capture_output=True, check=True)
+    run_py(["generate2.py"], check=True)
     import profile_file as P
 
     got = P.profile(os.path.join(SPIKE, "legacy2.txt"))

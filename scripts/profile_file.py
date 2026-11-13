@@ -32,6 +32,12 @@ import sys
 from collections import Counter
 from datetime import datetime
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%Y%m%d", "%m/%d/%Y", "%d-%m-%Y",
                 "%Y/%m/%d", "%d.%m.%Y")
 DELIMITERS = ("|", "\t", ";", ",")

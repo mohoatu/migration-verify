@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 .mutants/
 
+# Cấu hình của máy, do `harness/install.*` chép vào. Bản gốc nằm ở `harness/`.
+.claude/
+
 # Dữ liệu thử do generate*.py sinh ra — tái tạo được, đừng commit.
 spike/legacy_output.txt
 spike/modern_output.txt
