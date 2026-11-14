@@ -19,7 +19,8 @@ param(
   [string]$Name      = 'win11-verify',
   [int]   $SshPort   = 2222,
   [string]$GuestUser = 'agent',
-  [string]$GuestPass = 'ChangeMe!2026',
+  # Read from the file 02-create-vm.ps1 wrote. No literal in the repo.
+  [string]$GuestPass = '',
   [string]$RepoHost  = 'D:\startup\migration-verify',
   [int]   $WaitMin   = 45
 )
@@ -27,6 +28,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $vbox = Join-Path $env:ProgramFiles 'Oracle\VirtualBox\VBoxManage.exe'
 $target = "$GuestUser@127.0.0.1"
+
+if (-not $GuestPass) {
+  $secretFile = Join-Path $PSScriptRoot 'guest-password.txt'
+  if (-not (Test-Path $secretFile)) {
+    Write-Error "No password given and $secretFile not found. Run 02-create-vm.ps1 first."
+  }
+  $GuestPass = (Get-Content $secretFile -Raw).Trim()
+}
 
 function Quiet($block) {
   # Native tools write progress and warnings to stderr, which PowerShell treats

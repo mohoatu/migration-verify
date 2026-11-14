@@ -28,10 +28,29 @@ param(
   [int]   $DiskMB  = 61440,
   [int]   $SshPort = 2222,
   [string]$GuestUser = 'agent',
-  [string]$GuestPass = 'ChangeMe!2026'
+  # No default on purpose. A password baked into a public repo is a password,
+  # not a placeholder, and "ChangeMe" never gets changed. Generated per run and
+  # written to a file the repo ignores.
+  [string]$GuestPass = ''
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ---- guest password --------------------------------------------------------
+# Generated if not supplied, and stored beside the VM in a file git ignores.
+# Step 03 reads it from there, so neither script needs a literal.
+$secretFile = Join-Path $PSScriptRoot 'guest-password.txt'
+if (-not $GuestPass) {
+  if (Test-Path $secretFile) {
+    $GuestPass = (Get-Content $secretFile -Raw).Trim()
+  } else {
+    $bytes = New-Object byte[] 18
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $GuestPass = 'Vm!' + [Convert]::ToBase64String($bytes).Replace('/', '_')
+    Set-Content -Path $secretFile -Value $GuestPass -NoNewline
+    Write-Host "Generated a guest password and stored it in $secretFile"
+  }
+}
 
 $vbox = Join-Path $env:ProgramFiles 'Oracle\VirtualBox\VBoxManage.exe'
 if (-not (Test-Path $vbox)) {

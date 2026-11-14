@@ -17,5 +17,12 @@ spike/modern2.txt
 customer/
 *.cust.txt
 *.prod.txt
+
+# Mật khẩu guest do script sinh ra, và mọi thứ hình dạng bí mật khác.
+guest-password.txt
+*secret*
+*.pem
+*.key
+.env
 build/  
 *.log  

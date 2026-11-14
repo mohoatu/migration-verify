@@ -1,0 +1,86 @@
+# The suite that proves the suite can fail.
+#
+# Two reasons this runs on BOTH Windows and Linux, and Windows is not optional:
+# on 12/11/2026 the whole suite was green on Linux/Python 3.10 and died
+# instantly on Windows/Python 3.13 - the console there defaults to cp1252 and
+# could not print the Vietnamese report at all. The tool's customers run
+# Windows. A green badge earned only on Linux would have been a lie.
+#
+# `mutate.py` matters more than `run.py`. This project IS a test suite: it sells
+# the sentence "nothing is wrong". A suite that can never go red makes that
+# sentence meaningless, so CI checks that deliberately broken code is caught.
+
+name: verify
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: tests (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # No pip install anywhere. The tool is sold to banks, where a dependency
+      # is a meeting with the security team - so it runs on the standard library
+      # and CI proves that stays true.
+      - name: Run the suite
+        run: python tests/run.py
+
+      - name: Prove the suite can fail
+        run: python tests/mutate.py
+
+  scenario-3:
+    name: Perl vs Java, end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # The comparison that nobody seeded differences into: two independent
+      # implementations of one spec, their real output diffed field by field.
+      - name: Generate input and run both implementations
+        working-directory: legacy-demo
+        run: |
+          python3 gen_policies.py
+          perl legacy/premcalc.pl policies.dat legacy_out.txt
+          javac -d build modern/PremCalc.java
+          java -cp build PremCalc policies.dat modern_out.txt
+
+      - name: Compare
+        working-directory: legacy-demo
+        continue-on-error: true          # a non-zero exit is the expected result
+        run: python3 ../spike/verify.py legacy_out.txt modern_out.txt schema.json --lang=en
+
+      # The comparator must still find exactly what it found on 13/11/2026:
+      # 354 blocking differences, all in `instalment`. If that number moves,
+      # either the comparator changed or one of the two programs did - and
+      # either way somebody has to look.
+      - name: Check the findings have not drifted
+        working-directory: legacy-demo
+        run: |
+          python3 ../spike/verify.py legacy_out.txt modern_out.txt schema.json --lang=en > out.txt || true
+          grep -q "across 354 records" out.txt || { echo "Finding count drifted:"; cat out.txt; exit 1; }
+          grep -q 'field `instalment`: 354 records' out.txt || { echo "Affected field changed:"; cat out.txt; exit 1; }
+          echo "Findings unchanged: 354 blocking differences in \`instalment\`."
