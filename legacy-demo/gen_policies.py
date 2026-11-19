@@ -14,6 +14,15 @@ Chạy:  python3 gen_policies.py
 """
 
 import random
+import sys
+
+# Windows mặc định ghi console bằng cp1252 và chết khi gặp tiếng Việt. Đúng lớp
+# lỗi đã bắt được ngày 12/11 ở `verify.py`; tệp này bị bỏ sót lúc đó.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 N = 1200
 SEED = 20261113
