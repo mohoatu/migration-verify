@@ -84,3 +84,25 @@ jobs:
           grep -q "across 354 records" out.txt || { echo "Finding count drifted:"; cat out.txt; exit 1; }
           grep -q 'field `instalment`: 354 records' out.txt || { echo "Affected field changed:"; cat out.txt; exit 1; }
           echo "Findings unchanged: 354 blocking differences in \`instalment\`."
+
+  ratchet:
+    name: nothing got worse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # kuli is pinned to a tag on purpose. Changing how a measure is computed
+      # changes every number it has ever produced, so a floating version would
+      # silently invalidate this repository's baseline. Bumping the tag is a
+      # decision, taken with a re-baseline.
+      - name: Fetch kuli v0.1.0
+        run: git clone --depth 1 --branch v0.1.0 https://github.com/mohoatu/trunk-kuli.git /tmp/kuli
+
+      - name: kuli ratchet
+        env:
+          PYTHONPATH: /tmp/kuli
+        run: python -m kuli.cli ratchet

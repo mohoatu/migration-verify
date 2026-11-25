@@ -1,0 +1,11 @@
+{
+  "python": {
+    "duplication": 0.0705,
+    "erosion": 0.3376,
+    "max_complexity": 21,
+    "max_nesting": 8,
+    "max_statements": 53,
+    "units": 75,
+    "verbosity": 12.24
+  }
+}

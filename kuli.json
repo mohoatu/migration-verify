@@ -1,0 +1,7 @@
+{
+  "tier": "B",
+  "note": "legacy-demo and cobol-demo are deliberately old-style demonstration code and are measured anyway: the ratchet compares against itself, and excluding real source is how a flat line gets faked.",
+  "skip": [],
+  "allowances": {},
+  "exceptions": {}
+}
